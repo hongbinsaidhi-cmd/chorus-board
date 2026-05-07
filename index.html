@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chorus Board Generator</title>
   <script src="https://cdn.jsdelivr.net/gh/gitbrent/PptxGenJS@3.12.0/dist/pptxgen.bundle.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -270,6 +271,45 @@
       margin-top: 0.8rem;
     }
 
+    /* Song sheet selection */
+    .sheet-song-item {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      padding: 0.8rem 1rem;
+      border-bottom: 1px solid #2a2a2a;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .sheet-song-item:hover { background: #222; }
+    .sheet-song-item:last-child { border-bottom: none; }
+
+    .sheet-song-item input[type="checkbox"] {
+      accent-color: #ffff00;
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .sheet-song-item .song-name { color: #ffff00; font-weight: 500; font-size: 0.9rem; }
+    .sheet-song-item .song-lines { color: #666; font-size: 0.75rem; }
+    .sheet-song-item.disabled { opacity: 0.35; pointer-events: none; }
+
+    /* Footer counter */
+    .footer-stats {
+      text-align: center;
+      padding: 2rem 1rem 1.5rem;
+      color: #444;
+      font-size: 0.75rem;
+      letter-spacing: 0.03em;
+    }
+
+    .footer-stats span {
+      color: #ffff00;
+      font-weight: 600;
+    }
+
     /* Responsive */
     @media (max-width: 600px) {
       header h1 { font-size: 1.4rem; }
@@ -290,6 +330,7 @@
     <button class="tab active" data-tab="new">New Song</button>
     <button class="tab" data-tab="settings">Background</button>
     <button class="tab" data-tab="manage">Song List</button>
+    <button class="tab" data-tab="songsheet">Song Sheet</button>
     <button class="tab" data-tab="help">How to Use</button>
   </div>
 
@@ -384,6 +425,32 @@ I will sing of the goodness of God"></textarea>
       Remove Background Image
     </button>
     <div id="bgStatus" class="status"></div>
+  </div>
+
+  <!-- Song Sheet Tab -->
+  <div id="tab-songsheet" class="tab-content">
+    <label>Generate a printable Song Sheet (PDF)</label>
+    <div class="hint" style="margin-bottom: 1rem;">Select up to 3 songs from your list. Lyrics are auto-cleaned and sized to fit one A4 page.</div>
+
+    <div id="songSheetSelect" class="song-list" style="margin-bottom: 1rem;">
+      <div class="song-list-empty">No songs added yet. Go to "New Song" to add songs first.</div>
+    </div>
+
+    <!-- Orientation -->
+    <label>Page Orientation</label>
+    <div style="display:flex; gap:1.5rem; margin-bottom:1.2rem; margin-top:0.3rem;">
+      <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-size:0.9rem;">
+        <input type="radio" name="sheetOrientation" value="portrait" checked style="accent-color:#ffff00;"> Portrait
+      </label>
+      <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-size:0.9rem;">
+        <input type="radio" name="sheetOrientation" value="landscape" style="accent-color:#ffff00;"> Landscape
+      </label>
+    </div>
+
+    <button class="btn btn-primary" id="songSheetBtn" onclick="generateSongSheet()" disabled>
+      Download Song Sheet (PDF)
+    </button>
+    <div id="songSheetStatus" class="status"></div>
   </div>
 
   <!-- Help Tab -->
@@ -713,6 +780,7 @@ async function downloadPptx() {
       : `Chorus Board - ${songs.length} Songs`;
 
     await pptx.writeFile({ fileName: filename });
+    incrementCounter();
     showStatus(document.getElementById('downloadStatus'),
       `Downloaded "${filename}.pptx" — ${slideNum - 1} slides total.`, 'success');
 
@@ -740,7 +808,27 @@ function escapeHtml(text) {
   div.textContent = text;
   return div.innerHTML;
 }
+
+// ── Counter ───────────────────────────────────────────────────────────
+function getCount() {
+  try { return parseInt(localStorage.getItem('chorusBoardCount') || '0', 10); } catch(e) { return 0; }
+}
+
+function incrementCounter() {
+  const count = getCount() + 1;
+  try { localStorage.setItem('chorusBoardCount', count); } catch(e) {}
+  document.getElementById('genCount').textContent = count;
+}
+
+// Init counter on load
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('genCount').textContent = getCount();
+});
 </script>
+
+<div class="footer-stats">
+  Number of chorus board generated: <span id="genCount">0</span>
+</div>
 
 </body>
 </html>
