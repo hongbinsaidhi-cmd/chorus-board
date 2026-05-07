@@ -289,6 +289,7 @@
   <div class="tabs">
     <button class="tab active" data-tab="new">New Song</button>
     <button class="tab" data-tab="manage">Song List</button>
+    <button class="tab" data-tab="settings">Background</button>
     <button class="tab" data-tab="help">How to Use</button>
   </div>
 
@@ -332,6 +333,59 @@ I will sing of the goodness of God"></textarea>
     <div id="previewArea"></div>
   </div>
 
+  <!-- Settings/Background Tab -->
+  <div id="tab-settings" class="tab-content">
+    <label>Slide Background Image (optional)</label>
+    <div class="file-upload-area" id="bgUploadArea" onclick="document.getElementById('bgImageInput').click()">
+      <input type="file" id="bgImageInput" accept="image/*" onchange="handleBgUpload(event)" style="position:absolute;inset:0;opacity:0;cursor:pointer;">
+      <div class="upload-icon">🖼</div>
+      <div class="upload-text" id="bgUploadText">Click to upload a background image</div>
+    </div>
+    <div class="hint" style="margin-bottom: 1.5rem;">
+      <strong style="color: #bbb;">Ideal specs:</strong> 1920 x 1080 px (16:9 ratio, Full HD). Use a dark image for best contrast with yellow text. PNG or JPG accepted.
+    </div>
+
+    <!-- Preview -->
+    <div id="bgPreview" style="display:none; margin-bottom: 1.5rem;">
+      <label>Preview</label>
+      <div style="position:relative; border-radius:8px; overflow:hidden; border:1px solid #333; aspect-ratio:16/9;">
+        <img id="bgPreviewImg" style="width:100%; height:100%; object-fit:cover; display:block;">
+        <div id="bgOverlayPreview" style="position:absolute; inset:0; background:rgba(0,0,0,0.5);"></div>
+        <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+          <span style="color:#ffff00; font-size:1.3rem; font-weight:700; text-shadow:0 2px 8px rgba(0,0,0,0.8);">Sample Lyric Text</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Overlay darkness slider -->
+    <div id="overlayControl" style="display:none; margin-bottom: 1.5rem;">
+      <label for="bgOverlay">Darkness Overlay: <span id="overlayValue">50</span>%</label>
+      <input type="range" id="bgOverlay" min="0" max="90" value="50" style="width:100%; accent-color:#ffff00; margin-top:0.3rem;" oninput="updateOverlay(this.value)">
+      <div class="hint">Higher = darker background, better text readability. 0% = no overlay (raw image).</div>
+    </div>
+
+    <!-- Apply to which slides -->
+    <div id="bgApplyControl" style="display:none; margin-bottom: 1rem;">
+      <label>Apply background to:</label>
+      <div style="display:flex; gap:1rem; margin-top:0.4rem;">
+        <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-size:0.85rem;">
+          <input type="checkbox" id="bgApplyLyrics" checked style="accent-color:#ffff00;"> Lyric slides
+        </label>
+        <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-size:0.85rem;">
+          <input type="checkbox" id="bgApplyTitle" style="accent-color:#ffff00;"> Title slides
+        </label>
+        <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-size:0.85rem;">
+          <input type="checkbox" id="bgApplyContents" style="accent-color:#ffff00;"> Contents page
+        </label>
+      </div>
+    </div>
+
+    <button class="btn" id="bgRemoveBtn" style="display:none; background:#333; color:#ef4444; margin-top:0.5rem;" onclick="removeBgImage()">
+      Remove Background Image
+    </button>
+    <div id="bgStatus" class="status"></div>
+  </div>
+
   <!-- Help Tab -->
   <div id="tab-help" class="tab-content">
     <div style="line-height: 1.7; color: #ccc; font-size: 0.9rem;">
@@ -355,6 +409,88 @@ I will sing of the goodness of God"></textarea>
 <script>
 // ── State ──────────────────────────────────────────────────────────────
 let songs = []; // [{title, lyrics: [line, line, ...], chunks: [[l1,l2], ...]}]
+let bgImageData = null; // base64 data URL for background image
+let bgOverlayPercent = 50; // darkness overlay percentage
+
+// ── Background image handling ─────────────────────────────────────────
+function handleBgUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  if (!file.type.startsWith('image/')) {
+    showStatus(document.getElementById('bgStatus'), 'Please upload an image file (PNG, JPG, etc.).', 'error');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    bgImageData = e.target.result;
+
+    // Show preview and controls
+    document.getElementById('bgPreviewImg').src = bgImageData;
+    document.getElementById('bgPreview').style.display = 'block';
+    document.getElementById('overlayControl').style.display = 'block';
+    document.getElementById('bgApplyControl').style.display = 'block';
+    document.getElementById('bgRemoveBtn').style.display = 'block';
+    document.getElementById('bgUploadArea').classList.add('has-file');
+    document.getElementById('bgUploadText').textContent = file.name + ' (' + Math.round(file.size/1024) + ' KB)';
+    updateOverlay(document.getElementById('bgOverlay').value);
+
+    // Check dimensions
+    const img = new Image();
+    img.onload = function() {
+      const ratio = (img.width / img.height).toFixed(2);
+      const ideal = (16/9).toFixed(2);
+      let dimMsg = img.width + ' x ' + img.height + ' px';
+      if (ratio !== ideal) {
+        dimMsg += ' — not 16:9 ratio, image will be stretched to fit slides';
+      }
+      showStatus(document.getElementById('bgStatus'), 'Image loaded: ' + dimMsg, 'success');
+    };
+    img.src = bgImageData;
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateOverlay(val) {
+  bgOverlayPercent = parseInt(val);
+  document.getElementById('overlayValue').textContent = val;
+  document.getElementById('bgOverlayPreview').style.background = 'rgba(0,0,0,' + (val/100) + ')';
+}
+
+function removeBgImage() {
+  bgImageData = null;
+  document.getElementById('bgImageInput').value = '';
+  document.getElementById('bgPreview').style.display = 'none';
+  document.getElementById('overlayControl').style.display = 'none';
+  document.getElementById('bgApplyControl').style.display = 'none';
+  document.getElementById('bgRemoveBtn').style.display = 'none';
+  document.getElementById('bgUploadArea').classList.remove('has-file');
+  document.getElementById('bgUploadText').textContent = 'Click to upload a background image';
+  showStatus(document.getElementById('bgStatus'), 'Background image removed.', 'success');
+}
+
+// Helper: create a darkened version of the background image using canvas
+function createOverlayImage(base64Data, overlayAlpha) {
+  return new Promise((resolve) => {
+    if (!base64Data || overlayAlpha === 0) {
+      resolve(base64Data);
+      return;
+    }
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1920;
+      canvas.height = 1080;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, 1920, 1080);
+      ctx.fillStyle = 'rgba(0,0,0,' + overlayAlpha + ')';
+      ctx.fillRect(0, 0, 1920, 1080);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.src = base64Data;
+  });
+}
 
 // ── Tab switching ──────────────────────────────────────────────────────
 document.querySelectorAll('.tab').forEach(tab => {
@@ -463,94 +599,130 @@ function removeSong(idx) {
 }
 
 // ── PPTX Generation ───────────────────────────────────────────────────
-function downloadPptx() {
+async function downloadPptx() {
   if (songs.length === 0) return;
 
-  const pptx = new PptxGenJS();
-  pptx.defineLayout({ name: 'WIDE', width: 13.333, height: 7.5 });
-  pptx.layout = 'WIDE';
+  const downloadBtn = document.getElementById('downloadBtn');
+  downloadBtn.disabled = true;
+  downloadBtn.textContent = 'Generating...';
 
-  // Calculate slide ranges for contents page
-  let slideNum = 2;
-  const songEntries = songs.map(song => {
-    const start = slideNum;
-    slideNum += 1 + song.chunks.length;
-    return { title: song.title, start, end: slideNum - 1 };
-  });
+  try {
+    // Prepare background image if set
+    let bgReady = null;
+    const applyToLyrics = document.getElementById('bgApplyLyrics')?.checked;
+    const applyToTitle = document.getElementById('bgApplyTitle')?.checked;
+    const applyToContents = document.getElementById('bgApplyContents')?.checked;
 
-  // ── Slide 1: Contents page ──
-  const contentsSlide = pptx.addSlide();
-  contentsSlide.background = { color: '000000' };
+    if (bgImageData) {
+      bgReady = await createOverlayImage(bgImageData, bgOverlayPercent / 100);
+    }
 
-  contentsSlide.addText('Song List', {
-    x: 0.5, y: 0.3, w: 12.3, h: 0.8,
-    fontSize: 36, color: 'FFFFFF', bold: true,
-    align: 'center'
-  });
+    const pptx = new PptxGenJS();
+    pptx.defineLayout({ name: 'WIDE', width: 13.333, height: 7.5 });
+    pptx.layout = 'WIDE';
 
-  const contentsLines = songEntries.map((e, i) => {
-    const dots = ' ' + '.'.repeat(Math.max(3, 50 - e.title.length)) + ' ';
-    return [
-      { text: `  ${i + 1}.  ${e.title}`, options: { fontSize: 24, color: 'FFFF00' } },
-      { text: `${dots}Slides ${e.start}-${e.end}`, options: { fontSize: 24, color: '999999' } },
-    ];
-  });
-
-  // Add each song as a separate paragraph
-  const contentsTextObjects = [];
-  songEntries.forEach((e, i) => {
-    const dots = ' ' + '.'.repeat(Math.max(3, 50 - e.title.length)) + ' ';
-    contentsTextObjects.push({
-      text: `  ${i + 1}.  ${e.title}${dots}Slides ${e.start}-${e.end}\n`,
-      options: { fontSize: 24, color: 'FFFF00', breakType: 'none' }
-    });
-  });
-
-  contentsSlide.addText(contentsTextObjects, {
-    x: 0.5, y: 1.3, w: 12.3, h: 5.5,
-    fontSize: 24, color: 'FFFF00',
-    align: 'left', valign: 'top',
-    lineSpacingMultiple: 1.5
-  });
-
-  // ── For each song ──
-  songs.forEach(song => {
-    // Song title slide
-    const titleSlide = pptx.addSlide();
-    titleSlide.background = { color: '000000' };
-    titleSlide.addText(song.title, {
-      x: 0.5, y: 2.5, w: 12.3, h: 2.5,
-      fontSize: 54, color: 'FFFF00', bold: true,
-      align: 'center', valign: 'middle'
+    // Calculate slide ranges for contents page
+    let slideNum = 2;
+    const songEntries = songs.map(song => {
+      const start = slideNum;
+      slideNum += 1 + song.chunks.length;
+      return { title: song.title, start, end: slideNum - 1 };
     });
 
-    // Lyric slides (2 lines each)
-    song.chunks.forEach(chunk => {
-      const lyricSlide = pptx.addSlide();
-      lyricSlide.background = { color: '000000' };
-      lyricSlide.addText(chunk.join('\n'), {
-        x: 0.5, y: 0.6, w: 12.3, h: 2.5,
-        fontSize: 42, color: 'FFFF00', bold: false,
-        align: 'center', valign: 'top'
+    // ── Slide 1: Contents page ──
+    const contentsSlide = pptx.addSlide();
+    if (bgReady && applyToContents) {
+      contentsSlide.background = { data: bgReady };
+    } else {
+      contentsSlide.background = { color: '000000' };
+    }
+
+    contentsSlide.addText('Song List', {
+      x: 0.5, y: 0.3, w: 12.3, h: 0.8,
+      fontSize: 36, color: 'FFFFFF', bold: true,
+      align: 'center',
+      shadow: bgReady && applyToContents ? { type: 'outer', blur: 6, offset: 2, color: '000000', opacity: 0.8 } : undefined
+    });
+
+    // Add each song as a clickable entry linking to its title slide
+    const contentsTextObjects = [];
+    songEntries.forEach((e, i) => {
+      const dots = ' ' + '.'.repeat(Math.max(3, 50 - e.title.length)) + ' ';
+      contentsTextObjects.push({
+        text: `  ${i + 1}.  ${e.title}${dots}Slides ${e.start}-${e.end}\n`,
+        options: { fontSize: 24, color: 'FFFF00', breakType: 'none', hyperlink: { slide: e.start } }
       });
     });
-  });
 
-  // Generate filename
-  const firstName = songs[0].title.replace(/[^\w\s-]/g, '').trim();
-  const filename = songs.length === 1
-    ? `Chorus Board - ${firstName}`
-    : `Chorus Board - ${songs.length} Songs`;
-
-  pptx.writeFile({ fileName: filename })
-    .then(() => {
-      showStatus(document.getElementById('downloadStatus'),
-        `Downloaded "${filename}.pptx" — ${slideNum - 1} slides total.`, 'success');
-    })
-    .catch(err => {
-      showStatus(document.getElementById('downloadStatus'),
-        'Error generating file: ' + err.message, 'error');
+    contentsSlide.addText(contentsTextObjects, {
+      x: 0.5, y: 1.3, w: 12.3, h: 5.5,
+      fontSize: 24, color: 'FFFF00',
+      align: 'left', valign: 'top',
+      lineSpacingMultiple: 1.5,
+      shadow: bgReady && applyToContents ? { type: 'outer', blur: 4, offset: 1, color: '000000', opacity: 0.8 } : undefined
     });
+
+    // ── For each song ──
+    songs.forEach(song => {
+      // Song title slide — distinct dark navy background + white title
+      const titleSlide = pptx.addSlide();
+      if (bgReady && applyToTitle) {
+        titleSlide.background = { data: bgReady };
+      } else {
+        titleSlide.background = { color: '0a0a2e' };
+      }
+      titleSlide.addText(song.title, {
+        x: 0.5, y: 2.0, w: 12.3, h: 2.5,
+        fontSize: 54, color: 'FFFFFF', bold: true,
+        align: 'center', valign: 'middle',
+        shadow: { type: 'outer', blur: 6, offset: 2, color: '000000', opacity: 0.9 }
+      });
+      // Subtle divider line under the title
+      titleSlide.addShape(pptx.ShapeType.rect, {
+        x: 4.0, y: 4.7, w: 5.3, h: 0.06,
+        fill: { color: 'FFFF00' }
+      });
+      // "Back to Contents" link at bottom
+      titleSlide.addText('Back to Contents', {
+        x: 4.5, y: 6.5, w: 4.3, h: 0.5,
+        fontSize: 14, color: '666666', italic: true,
+        align: 'center', hyperlink: { slide: 1 }
+      });
+
+      // Lyric slides (2 lines each)
+      song.chunks.forEach(chunk => {
+        const lyricSlide = pptx.addSlide();
+        if (bgReady && applyToLyrics) {
+          lyricSlide.background = { data: bgReady };
+        } else {
+          lyricSlide.background = { color: '000000' };
+        }
+        lyricSlide.addText(chunk.join('\n'), {
+          x: 0.5, y: 0.6, w: 12.3, h: 2.5,
+          fontSize: 42, color: 'FFFF00', bold: false,
+          align: 'center', valign: 'top',
+          shadow: bgReady && applyToLyrics ? { type: 'outer', blur: 5, offset: 2, color: '000000', opacity: 0.9 } : undefined
+        });
+      });
+    });
+
+    // Generate filename
+    const firstName = songs[0].title.replace(/[^\w\s-]/g, '').trim();
+    const filename = songs.length === 1
+      ? `Chorus Board - ${firstName}`
+      : `Chorus Board - ${songs.length} Songs`;
+
+    await pptx.writeFile({ fileName: filename });
+    showStatus(document.getElementById('downloadStatus'),
+      `Downloaded "${filename}.pptx" — ${slideNum - 1} slides total.`, 'success');
+
+  } catch(err) {
+    showStatus(document.getElementById('downloadStatus'),
+      'Error generating file: ' + err.message, 'error');
+  } finally {
+    downloadBtn.disabled = false;
+    downloadBtn.textContent = 'Download PowerPoint';
+  }
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────
