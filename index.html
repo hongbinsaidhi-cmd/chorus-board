@@ -348,8 +348,8 @@
   <div class="tabs">
     <button class="tab active" data-tab="new">New Song</button>
     <button class="tab" data-tab="settings">Background</button>
-    <button class="tab" data-tab="manage">Song List<span class="tab-badge" id="badgeManage"></span></button>
-    <button class="tab" data-tab="songsheet">Song Sheet<span class="tab-badge" id="badgeSongSheet"></span></button>
+    <button class="tab" data-tab="manage">Song List<span id="badgeManage"></span></button>
+    <button class="tab" data-tab="songsheet">Song Sheet<span id="badgeSongSheet"></span></button>
     <button class="tab" data-tab="help">How to Use</button>
   </div>
 
@@ -651,10 +651,10 @@ function updateSongList() {
   const downloadBtn = document.getElementById('downloadBtn');
   updateSongSheetSelect(); // keep song sheet tab in sync
 
-  // Update tab badges
+  // Update tab text with count
   const count = songs.length;
-  document.getElementById('badgeManage').textContent = count > 0 ? count : '';
-  document.getElementById('badgeSongSheet').textContent = count > 0 ? count : '';
+  document.getElementById('badgeManage').textContent = count > 0 ? ' (' + count + ')' : '';
+  document.getElementById('badgeSongSheet').textContent = count > 0 ? ' (' + count + ')' : '';
 
   if (songs.length === 0) {
     listEl.innerHTML = '<div class="song-list-empty">No songs added yet. Go to "New Song" to add one.</div>';
