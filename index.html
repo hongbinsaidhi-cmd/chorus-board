@@ -296,6 +296,25 @@
     .sheet-song-item .song-lines { color: #666; font-size: 0.75rem; }
     .sheet-song-item.disabled { opacity: 0.35; pointer-events: none; }
 
+    /* Tab badge */
+    .tab-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffff00;
+      color: #000;
+      font-size: 0.65rem;
+      font-weight: 700;
+      min-width: 16px;
+      height: 16px;
+      border-radius: 8px;
+      padding: 0 4px;
+      margin-left: 5px;
+      vertical-align: middle;
+    }
+
+    .tab-badge:empty { display: none; }
+
     /* Footer counter */
     .footer-stats {
       text-align: center;
@@ -329,8 +348,8 @@
   <div class="tabs">
     <button class="tab active" data-tab="new">New Song</button>
     <button class="tab" data-tab="settings">Background</button>
-    <button class="tab" data-tab="manage">Song List</button>
-    <button class="tab" data-tab="songsheet">Song Sheet</button>
+    <button class="tab" data-tab="manage">Song List<span class="tab-badge" id="badgeManage"></span></button>
+    <button class="tab" data-tab="songsheet">Song Sheet<span class="tab-badge" id="badgeSongSheet"></span></button>
     <button class="tab" data-tab="help">How to Use</button>
   </div>
 
@@ -631,6 +650,11 @@ function updateSongList() {
   const listEl = document.getElementById('songList');
   const downloadBtn = document.getElementById('downloadBtn');
   updateSongSheetSelect(); // keep song sheet tab in sync
+
+  // Update tab badges
+  const count = songs.length;
+  document.getElementById('badgeManage').textContent = count > 0 ? count : '';
+  document.getElementById('badgeSongSheet').textContent = count > 0 ? count : '';
 
   if (songs.length === 0) {
     listEl.innerHTML = '<div class="song-list-empty">No songs added yet. Go to "New Song" to add one.</div>';
